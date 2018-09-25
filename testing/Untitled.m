@@ -1,5 +1,5 @@
 M=100;                 
-D=5;                  
+D=1;                  
 Ne=800;                Ni=200;                   N=Ne+Ni;
 a=[0.02*ones(Ne,1);    0.1*ones(Ni,1)];
 d=[   8*ones(Ne,1);    2*ones(Ni,1)];
@@ -21,6 +21,8 @@ for i=Ne+1:N
     post(i,:)=p(1:M);
     delays{i,1}=1:M;                    
 end;
+post(111,:)=randperm(Ne,M);
+post(222,:)=randperm(Ne,M);
 
 pre = cell(N,1);
 aux = cell(N,1);
@@ -38,17 +40,15 @@ v = -65*ones(N,1);                      % initial values
 u = 0.2.*v;                             % initial values
 firings=[-D 0];                         % spike timings
 %selecting excitatory neurons for action representation
-action_neurons= randperm(800,105);
-n1_right=action_neurons(1:10);
-n1_left=action_neurons(51:60);
-S1_neurons=action_neurons(101);
-S2_neurons=action_neurons(102);
+n1_right=post(222,:);
+n1_left=post(111,:);
+S1_neurons=111;
+S2_neurons=222;
 
 save('intial.mat','pre','delays','post','aux');
-dlmwrite('action_neurons.csv',action_neurons,'delimiter',',','-append');
 
 %4 inputs representation
-I_input=10*(ones(N,4));
+I_input=12*(ones(N,4));
 for i=1:1000
   if ~any(i==S1_neurons)
     I_input(i,1)=0; %earlier kept 0
@@ -56,14 +56,14 @@ for i=1:1000
   if ~any(i==S2_neurons)
     I_input(i,2)=0;
   end
-   if ~any(i==action_neurons(103))
+   if ~any(i==333)
     I_input(i,3)=0;
    end
  
    I_input(i,4)=0; %S4 =0 
 end
 
-T=3600*10;        
+T=5000;        
 DA=0;         
 rew=[];
 neg_rew=[];
@@ -76,6 +76,7 @@ count_no_action=0;
 incorrect_L=0;
 incorrect_R=0;
 window=100;
+record_mat=[];
 
 for sec=1:T  
      fired_R=0;
@@ -92,13 +93,7 @@ for sec=1:T
             if(t==1)
                 sd=zeros(N,M);                     
                 DA=0;
-                if(alt==0)
-                    input=1;
-                    alt=1;
-                else
-                    input=2;
-                    alt=0;
-                end
+                input=randperm(2,1);
                 input2= randperm(2,1)+2;
                 I=I_input(:,input)+I_input(:,input2);
                 stimulus_time=sec*1000+t;
@@ -132,11 +127,11 @@ for sec=1:T
     end
     
     v=v+0.5*((0.04*v+5).*v+140-u+ I);   
-    v=v+0.5*((0.04*v+5).*v+140-u+ I);    
+   % v=v+0.5*((0.04*v+5).*v+140-u+ I);    
     u=u+a.*(0.2*v-u);                  
     STDP(:,t+D+1)=0.95*STDP(:,t+D);     
     
-    if(t<=window && mod(sec,5)==0)
+    if(t<=window+50 && mod(sec,5)==0)
         temp_R=0;
         temp_L=0;
         temp_s1=0;
@@ -166,7 +161,7 @@ for sec=1:T
         fired_R=fired_R+temp_R;
         fired_L=fired_L+temp_L;
         fires=fires+temp_fires;
-        if (t==window)  
+        if (t==window+50)  
             action_executed=[0,0,0]; %[left,right,no action]
             correct=0; %correct=1 for correct case and correct=0 for wrong case  
             avg_firing=avg_firing;
@@ -175,7 +170,7 @@ for sec=1:T
                              
             if(fired_L>fired_R)
                 action_executed=[1,0,0];
-                reward_time=sec*1000+t+floor(1200/(fired_L-fired_R));      
+                reward_time=sec*1000+t+floor(1000/(fired_L-fired_R));      
                 if (input==1) 
                     count_left=count_left+1;
                     correct=1;
@@ -189,7 +184,7 @@ for sec=1:T
     
             elseif(fired_R>fired_L)
                 action_executed=[0,1,0];
-                reward_time=sec*1000+t+floor(1200/(fired_R-fired_L));           
+                reward_time=sec*1000+t+floor(1000/(fired_R-fired_L));           
                 
                 if (input==2)
                   correct=1;
@@ -211,7 +206,7 @@ for sec=1:T
             for k=1:N
                 record=[record,fires(k)];
             end
-            dlmwrite(("data.csv"),record,'delimiter',',','-append');
+            record_mat=[record_mat;record];
         end
     end
   
@@ -224,22 +219,10 @@ for sec=1:T
 %   end  
   
   DA=DA*0.99;
-
-        for i=1:Ne
-            for j=1:M
-                if sec>200
-                    dw=(0.01+DA)*sd(i,j);
-                    if dw>0
-                        s(i,j)=s(i,j)+ dw;
-                    else
-                        s(i,j)=max(0,s(i,j)+ dw*s(i,j));
-                    end
-                else 
-                    s(i,j)=max(0,min(10,s(i,j)+sd(i,j)));
-                end
-            end     
-        end     
-        sd=0.9*sd;
+    if (mod(t,10)==0)
+        s(1:Ne,:)=max(0,s(1:Ne,:)+(DA)*sd(1:Ne,:));
+        sd=0.99*sd;
+    end
   
   end
 
@@ -257,5 +240,5 @@ for sec=1:T
   firings=[-D 0;firings(ind,1)-1000,firings(ind,2)];
  
 end
-
+save("data.mat",'record_mat');
 save("value_noise_.mat",'STDP','s','sd');
