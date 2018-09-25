@@ -226,14 +226,12 @@ for sec=1:T
   
   end
 
-%   subplot(2,1,1)
-%   plot(firings(:,1),firings(:,2),'.');
-%   axis([0 1000 0 N]); 
-% %   subplot(2,2,3);
-% %   plot(0.001*(1:(sec*1000+t)), shist(1:sec*1000+t,2),0.001*rew,0*rew,'rx');
-%   subplot(2,2,4);
-%   hist(s(find(s>0)),60*(0.01:0.01:1)); % only excitatory synapses
-%   drawnow;
+  subplot(2,1,1)
+  plot(firings(:,1),firings(:,2),'.');
+  axis([0 1000 0 N]); 
+  subplot(2,2,4);
+  hist(s(find(s>0)),60*(0.01:0.01:1)); % only excitatory synapses
+  drawnow;
 
   STDP(:,1:D+1)=STDP(:,1001:1001+D);
   ind = find(firings(:,1) > 1001-D);
